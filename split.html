@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BudgetBuddy — Expense Split</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₹</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            tool: {
+              50: '#eef4ff', 100: '#dfe8ff', 200: '#c2d3ff',
+              300: '#9eb6ff', 400: '#7893ff', 500: '#5c7cfa',
+              600: '#4f6ef0', 700: '#4560dc', 800: '#3d53b8',
+              900: '#35478f', 950: '#20294e',
+            },
+            money: {
+              50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0',
+              500: '#10b981', 600: '#059669', 700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    .font-mono, .tabular-nums, input[type="number"] {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(92,124,250,0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(16,185,129,0.07), transparent 24%),
+        linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+    }
+    .dark body, .dark {
+      background:
+        radial-gradient(circle at top left, rgba(92,124,250,0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(16,185,129,0.08), transparent 24%),
+        linear-gradient(to bottom right, #020617, #0f172a);
+    }
+
+    .tool-bg {
+      position: relative;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(100,116,139,0.08) 1px, transparent 0),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%2310b981' stroke-opacity='0.04' stroke-width='1.2'%3E%3Ctext x='18' y='60' font-size='28' font-family='Arial'%3E₹%3C/text%3E%3Ctext x='150' y='110' font-size='34' font-family='Arial'%3E₹%3C/text%3E%3Ctext x='70' y='190' font-size='26' font-family='Arial'%3E  %3C/text%3E%3C/g%3E%3C/svg%3E");
+      background-size: 24px 24px, 240px 240px;
+      background-position: 0 0, center;
+    }
+    .dark .tool-bg {
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(148,163,184,0.06) 1px, transparent 0),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%2334d399' stroke-opacity='0.04' stroke-width='1.2'%3E%3Ctext x='18' y='60' font-size='28' font-family='Arial'%3E₹%3C/text%3E%3Ctext x='150' y='110' font-size='34' font-family='Arial'%3E₹%3C/text%3E%3Ctext x='70' y='190' font-size='26' font-family='Arial'%3E₹%3C/text%3E%3C/g%3E%3C/svg%3E");
+      background-size: 24px 24px, 240px 240px;
+      background-position: 0 0, center;
+    }
+
+    .glass-panel {
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.65);
+      box-shadow: 0 10px 25px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    .dark .glass-panel {
+      background: rgba(15,23,42,0.72);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .input-engraved {
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), inset 0 0 0 1px rgba(0,0,0,0.05);
+    }
+    .dark .input-engraved {
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.28), inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .panel-raised {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.65);
+    }
+    .dark .panel-raised {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.28), 0 8px 24px rgba(0,0,0,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-100%) scale(.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(-100%) scale(.95); }
+    }
+
+    .animate-fade-slide-up { animation: fadeSlideUp .4s cubic-bezier(0.16,1,0.3,1) both; }
+    .animate-slide-right { animation: slideInRight .4s cubic-bezier(0.16,1,0.3,1) both; }
+    .animate-scale-in { animation: scaleIn .3s cubic-bezier(0.16,1,0.3,1) both; }
+    .animate-toast-in { animation: toastIn .4s cubic-bezier(0.16,1,0.3,1) both; }
+    .animate-toast-out { animation: toastOut .3s cubic-bezier(0.16,1,0.3,1) both; }
+    .stagger-1 { animation-delay: .05s; }
+    .stagger-2 { animation-delay: .1s; }
+    .stagger-3 { animation-delay: .15s; }
+
+    .tab-glow-blue { box-shadow: 0 4px 20px rgba(92,124,250,0.35), 0 2px 8px rgba(92,124,250,0.2); }
+    .tab-glow-green { box-shadow: 0 4px 20px rgba(16,185,129,0.35), 0 2px 8px rgba(16,185,129,0.2); }
+    .tab-glow-amber { box-shadow: 0 4px 20px rgba(245,158,11,0.35), 0 2px 8px rgba(245,158,11,0.2); }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 999px; }
+
+    @media (max-width: 640px) { .touch-target { min-height: 44px; min-width: 44px; } }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+      .panel-raised, .glass-panel { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+    }
+
+    html.transitioning, html.transitioning *, html.transitioning *::before, html.transitioning *::after {
+      transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease !important;
+    }
+
+    /* ===== PAGE NAV (matches BudgetBuddy nav) ===== */
+    .bb-page-nav {
+      display: flex;
+      gap: 4px;
+      padding: 5px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+    .dark .bb-page-nav {
+      background: rgba(15,23,42,0.55);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    }
+    .bb-page-nav::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      pointer-events: none;
+    }
+
+    .bb-nav-link {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 18px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-decoration: none;
+      transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+      user-select: none;
+    }
+    .dark .bb-nav-link { color: #475569; }
+
+    .bb-nav-link:hover:not(.bb-nav-active) {
+      color: #1e293b;
+      background: rgba(255,255,255,0.5);
+    }
+    .dark .bb-nav-link:hover:not(.bb-nav-active) {
+      color: #e2e8f0;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .bb-nav-link.bb-nav-active {
+      color: white !important;
+      box-shadow: 0 4px 18px rgba(16,185,129,0.35);
+    }
+
+    .bb-nav-budget.bb-nav-active {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      box-shadow: 0 4px 18px rgba(102,126,234,0.35);
+    }
+    .bb-nav-split.bb-nav-active {
+      background: linear-gradient(135deg, #10b981, #14b8a6);
+      box-shadow: 0 4px 18px rgba(16,185,129,0.35);
+    }
+
+    .bb-nav-emoji { font-size: 1.05rem; line-height: 1; }
+
+    @media (max-width: 640px) {
+      .bb-nav-link { padding: 9px 14px; font-size: 0.8rem; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+
+  <!-- ===== Page Navigation (outside React for instant load) ===== -->
+  <div class="no-print max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-1">
+    <nav class="bb-page-nav" aria-label="Site Navigation">
+      <a href="index.html" class="bb-nav-link bb-nav-budget">
+        <span class="bb-nav-emoji" aria-hidden="true">💰</span>
+        <span>Budget Tracker</span>
+      </a>
+      <a href="split.html" class="bb-nav-link bb-nav-split bb-nav-active" aria-current="page">
+        <span class="bb-nav-emoji" aria-hidden="true">✂️</span>
+        <span>Expense Split</span>
+      </a>
+    </nav>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, createContext, useContext, memo } = React;
+
+    /* ===== SHARED THEME KEY (synced with BudgetBuddy) ===== */
+    const THEME_KEY = 'budgetbuddy_theme';
+    const TRIPS_KEY = 'budgetbuddy_trips';
+
+    const genId = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 12);
+
+    const formatINR = (n) => {
+      if (n === 0) return '₹0';
+      const abs = Math.abs(n);
+      const sign = n < 0 ? '-' : '';
+      if (abs >= 10000000) return sign + '₹' + (abs / 10000000).toFixed(2) + ' Cr';
+      if (abs >= 100000) return sign + '₹' + (abs / 100000).toFixed(2) + ' L';
+      return sign + '₹' + abs.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    };
+
+    const formatINRPrecise = (n) => {
+      const sign = n < 0 ? '-' : '';
+      return sign + '₹' + Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    };
+
+    /* ===== ICONS ===== */
+    const Icon = ({ children, size = 20, className = '', ...props }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+        strokeLinejoin="round" className={className} {...props}>
+        {children}
+      </svg>
+    );
+
+    const Icons = {
+      Sun: (p) => <Icon {...p}><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></Icon>,
+      Moon: (p) => <Icon {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></Icon>,
+      Trash2: (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Icon>,
+      Copy: (p) => <Icon {...p}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></Icon>,
+      Printer: (p) => <Icon {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>,
+      Receipt: (p) => <Icon {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></Icon>,
+      Calculator: (p) => <Icon {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></Icon>,
+      History: (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></Icon>,
+      Users: (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>,
+      UserPlus: (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></Icon>,
+      X: (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>,
+      Save: (p) => <Icon {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></Icon>,
+      FolderOpen: (p) => <Icon {...p}><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></Icon>,
+      IndianRupee: (p) => <Icon {...p}><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></Icon>,
+      TrendingUp: (p) => <Icon {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>,
+      TrendingDown: (p) => <Icon {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></Icon>,
+      AlertCircle: (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>,
+      CheckCircle: (p) => <Icon {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Icon>,
+      Wallet: (p) => <Icon {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></Icon>,
+      Scissors: (p) => <Icon {...p}><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></Icon>,
+      RefreshCw: (p) => <Icon {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></Icon>,
+      MapPin: (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>,
+      Calendar: (p) => <Icon {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></Icon>,
+      Info: (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></Icon>,
+      Sparkles: (p) => <Icon {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></Icon>,
+    };
+
+    /* ===== TOAST SYSTEM ===== */
+    const ToastContext = createContext(null);
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+
+      const addToast = useCallback((message, type = 'success', duration = 3000) => {
+        const id = genId();
+        setToasts(prev => [...prev, { id, message, type, exiting: false }]);
+        setTimeout(() => {
+          setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
+        }, duration);
+      }, []);
+
+      const dismissToast = useCallback((id) => {
+        setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
+      }, []);
+
+      const iconMap = { success: Icons.CheckCircle, error: Icons.AlertCircle, info: Icons.Info };
+      const colorMap = {
+        success: 'bg-emerald-500 dark:bg-emerald-600',
+        error: 'bg-rose-500 dark:bg-rose-600',
+        info: 'bg-tool-500 dark:bg-tool-600'
+      };
+
+      return (
+        <ToastContext.Provider value={{ addToast }}>
+          {children}
+          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print" style={{ paddingRight: '16px' }}>
+            {toasts.map(toast => {
+              const ToastIcon = iconMap[toast.type] || iconMap.info;
+              return (
+                <div key={toast.id}
+                  className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200/80 dark:border-slate-700 ${toast.exiting ? 'animate-toast-out' : 'animate-toast-in'}`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-xl ${colorMap[toast.type]} flex items-center justify-center`}>
+                    <ToastIcon size={16} className="text-white" />
+                  </div>
+                  <p className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200">{toast.message}</p>
+                  <button onClick={() => dismissToast(toast.id)}
+                    className="flex-shrink-0 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors touch-target">
+                    <Icons.X size={14} className="text-slate-400" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+
+    const useToast = () => useContext(ToastContext);
+
+    /* ===== THEME HOOK (syncs with BudgetBuddy) ===== */
+    function useTheme() {
+      const [dark, setDark] = useState(() => {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === 'dark') return true;
+        if (stored === 'light') return false;
+        return window.matchMedia?.('(prefers-color-scheme:dark)').matches || false;
+      });
+
+      useEffect(() => {
+        const html = document.documentElement;
+        html.classList.add('transitioning');
+        if (dark) {
+          html.classList.add('dark');
+          html.setAttribute('data-theme', 'dark');
+        } else {
+          html.classList.remove('dark');
+          html.setAttribute('data-theme', 'light');
+        }
+        localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+        setTimeout(() => html.classList.remove('transitioning'), 350);
+      }, [dark]);
+
+      return [dark, setDark];
+    }
+
+    /* ===== DATA HELPERS ===== */
+    const createParticipant = (name = '') => ({
+      id: genId(), name, carried: '', remaining: '', customShare: '',
+    });
+
+    function minimizeDebts(participants, customSplitEnabled = false) {
+      const expenses = participants.map(p => ({
+        name: p.name || 'Unnamed',
+        expense: (parseFloat(p.carried) || 0) - (parseFloat(p.remaining) || 0),
+        customShare: customSplitEnabled ? (parseFloat(p.customShare) || 0) : 0,
+      }));
+      const total = expenses.reduce((s, e) => s + e.expense, 0);
+      let balances;
+      if (customSplitEnabled) {
+        balances = expenses.map(e => ({ name: e.name, expense: e.expense, owed: e.customShare, balance: e.expense - e.customShare }));
+      } else {
+        const avg = expenses.length ? total / expenses.length : 0;
+        balances = expenses.map(e => ({ name: e.name, expense: e.expense, owed: avg, balance: e.expense - avg }));
+      }
+      const creditors = balances.filter(b => b.balance > 0.01).map(b => ({ ...b })).sort((a, b) => b.balance - a.balance);
+      const debtors = balances.filter(b => b.balance < -0.01).map(b => ({ ...b, balance: Math.abs(b.balance) })).sort((a, b) => b.balance - a.balance);
+      const settlements = [];
+      let i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        const amount = Math.min(debtors[i].balance, creditors[j].balance);
+        if (amount > 0.01) settlements.push({ from: debtors[i].name, to: creditors[j].name, amount: Math.round(amount * 100) / 100 });
+        debtors[i].balance -= amount;
+        creditors[j].balance -= amount;
+        if (debtors[i].balance < 0.01) i++;
+        if (creditors[j].balance < 0.01) j++;
+      }
+      const avg = participants.length ? total / participants.length : 0;
+      return { balances, avg, total, settlements };
+    }
+
+    /* ===== HEADER (rebranded for BudgetBuddy) ===== */
+    const Header = memo(({ dark, setDark }) => (
+      <header className="no-print sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/60 dark:border-slate-800/80">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-tool-500 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-white/20">
+              <span className="text-white font-black text-lg" style={{textShadow:'0 1px 3px rgba(0,0,0,.2)'}}>₹</span>
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-emerald-600 via-teal-500 to-tool-500 dark:from-emerald-400 dark:via-teal-400 dark:to-tool-400 bg-clip-text text-transparent">
+                Expense Split
+              </h1>
+              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500 -mt-0.5 hidden sm:block">
+                by BudgetBuddy • Premium Tool
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setDark(d => !d)}
+            className="relative w-11 h-11 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white/90 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-all duration-200 touch-target hover:shadow-md active:scale-95"
+            aria-label="Toggle theme">
+            {dark ? <Icons.Sun size={18} className="text-amber-400" /> : <Icons.Moon size={18} className="text-slate-500" />}
+          </button>
+        </div>
+      </header>
+    ));
+
+    /* ===== TAB NAVIGATION ===== */
+    const tabs = [
+      { id: 'tracker', label: 'Tracker', icon: Icons.Receipt,
+        activeClass: 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white tab-glow-blue',
+        hoverClass: 'hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/20',
+      },
+      { id: 'split', label: 'Split', icon: Icons.Calculator,
+        activeClass: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white tab-glow-green',
+        hoverClass: 'hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20',
+      },
+      { id: 'history', label: 'History', icon: Icons.History,
+        activeClass: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white tab-glow-amber',
+        hoverClass: 'hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50/70 dark:hover:bg-amber-900/20',
+      },
+    ];
+
+    const TabNav = memo(({ active, onChange }) => (
+      <nav className="no-print max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-2">
+        <div className="glass-panel rounded-2xl p-1.5 flex gap-1.5">
+          {tabs.map(tab => {
+            const TabIcon = tab.icon;
+            const isActive = active === tab.id;
+            return (
+              <button key={tab.id} onClick={() => onChange(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 touch-target ${isActive ? tab.activeClass : `text-slate-400 dark:text-slate-500 ${tab.hoverClass}`}`}>
+                <TabIcon size={16} />
+                <span>{tab.label}</span>
+                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-scale-in" />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    ));
+
+    /* ===== PARTICIPANT ROW ===== */
+    const ParticipantRow = memo(({ participant, index, onChange, onRemove, canRemove, customSplitEnabled }) => {
+      const carried = parseFloat(participant.carried) || 0;
+      const remaining = parseFloat(participant.remaining) || 0;
+      const expense = carried - remaining;
+      return (
+        <div className="animate-fade-slide-up glass-panel rounded-3xl p-4 sm:p-5" style={{ animationDelay: `${index * 0.05}s` }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-tool-100 to-tool-200 dark:from-tool-900/40 dark:to-tool-800/30 flex items-center justify-center shadow-sm">
+                <span className="text-xs font-bold font-mono text-tool-600 dark:text-tool-400">{String(index + 1).padStart(2, '0')}</span>
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Participant</span>
+            </div>
+            {canRemove && (
+              <button onClick={onRemove}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-200 touch-target active:scale-95">
+                <Icons.Trash2 size={16} />
+              </button>
+            )}
+          </div>
+          <div className={`grid gap-3 ${customSplitEnabled ? 'grid-cols-1 sm:grid-cols-5' : 'grid-cols-1 sm:grid-cols-4'}`}>
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Name</label>
+              <input type="text" value={participant.name} placeholder="e.g. Rahul"
+                onChange={e => onChange(participant.id, 'name', e.target.value)}
+                className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600/60 bg-slate-50/90 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-tool-500/30 focus:border-tool-500 input-engraved transition-all text-sm font-medium" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">₹ Carried</label>
+              <input type="number" value={participant.carried} placeholder="0"
+                onChange={e => onChange(participant.id, 'carried', e.target.value)} min="0" inputMode="decimal"
+                className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600/60 bg-slate-50/90 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-tool-500/30 focus:border-tool-500 input-engraved transition-all text-sm" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">₹ Remaining</label>
+              <input type="number" value={participant.remaining} placeholder="0"
+                onChange={e => onChange(participant.id, 'remaining', e.target.value)} min="0" inputMode="decimal"
+                className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600/60 bg-slate-50/90 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-tool-500/30 focus:border-tool-500 input-engraved transition-all text-sm" />
+            </div>
+            {customSplitEnabled && (
+              <div>
+                <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Custom Share ₹</label>
+                <input type="number" value={participant.customShare} placeholder="0"
+                  onChange={e => onChange(participant.id, 'customShare', e.target.value)} min="0" inputMode="decimal"
+                  className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-600/60 bg-slate-50/90 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-money-500/30 focus:border-money-500 input-engraved transition-all text-sm" />
+              </div>
+            )}
+            <div>
+              <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5">Expense</label>
+              <div className={`px-3 py-2.5 rounded-2xl border text-sm font-mono font-semibold ${expense > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400' : expense < 0 ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-400' : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700/60 text-slate-500'}`}>
+                {formatINRPrecise(expense)}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    });
+
+    /* ===== TRACKER TAB ===== */
+    function TrackerTab({ tripTitle, setTripTitle, participants, setParticipants, onSave, totalExpense, onGoSplit, customSplitEnabled, setCustomSplitEnabled }) {
+      const { addToast } = useToast();
+      const handleChange = useCallback((id, field, value) => {
+        setParticipants(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+      }, []);
+      const addParticipant = useCallback(() => { setParticipants(prev => [...prev, createParticipant()]); addToast('Participant added', 'info', 2000); }, []);
+      const removeParticipant = useCallback((id) => { setParticipants(prev => prev.filter(p => p.id !== id)); addToast('Participant removed', 'info', 2000); }, []);
+      const resetAll = useCallback(() => { setTripTitle(''); setParticipants([createParticipant(), createParticipant()]); setCustomSplitEnabled(false); addToast('Form reset', 'info'); }, []);
+      const totalCustomShare = participants.reduce((sum, p) => sum + (parseFloat(p.customShare) || 0), 0);
+      const customShareMatches = Math.abs(totalCustomShare - totalExpense) < 0.01;
+
+      return (
+        <div className="space-y-4 animate-fade-slide-up" key="tracker">
+          <div className="glass-panel rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Icons.MapPin size={16} className="text-tool-500" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Trip / Event Title</span>
+            </div>
+            <input type="text" value={tripTitle} placeholder="e.g. Goa Trip 2024"
+              onChange={e => setTripTitle(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-600/60 bg-slate-50/90 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-tool-500/30 focus:border-tool-500 input-engraved transition-all text-base font-semibold" />
+          </div>
+
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-tool-600 p-4 sm:p-6 text-white shadow-xl shadow-emerald-500/20 animate-scale-in">
+            <div className="absolute inset-0 opacity-[0.07]" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'}} />
+            <div className="relative flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-1">Total Group Expense</p>
+                <p className="text-3xl sm:text-4xl font-black font-mono tracking-tight">{formatINRPrecise(totalExpense)}</p>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10">
+                <Icons.IndianRupee size={26} className="text-white/90" />
+              </div>
+            </div>
+            <div className="relative mt-4 pt-3 border-t border-white/15 flex items-center gap-4 text-sm flex-wrap">
+              <div className="flex items-center gap-1.5"><Icons.Users size={14} className="text-white/75" /><span className="font-mono text-white/90">{participants.length} people</span></div>
+              <div className="flex items-center gap-1.5"><span className="text-white/75">Avg:</span><span className="font-mono font-semibold text-white/90">{formatINRPrecise(participants.length > 0 ? totalExpense / participants.length : 0)}</span></div>
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-3xl p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-money-100 to-emerald-100 dark:from-money-700/20 dark:to-emerald-800/20 flex items-center justify-center shrink-0">
+                <Icons.Info size={18} className="text-money-600 dark:text-money-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">Before adding participants</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-6">
+                  <span className="font-semibold">Amount Carried</span> means how much money a person carried before the trip.<br/>
+                  <span className="font-semibold">Amount Remaining</span> means how much money was left after the trip.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-3xl p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Icons.IndianRupee size={16} className="text-money-500" />
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Split</span>
+              </div>
+              <button onClick={() => setCustomSplitEnabled(v => !v)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 touch-target ${customSplitEnabled ? 'bg-gradient-to-r from-money-500 to-teal-500 text-white shadow-lg shadow-money-500/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-money-300 dark:hover:border-money-700'}`}>
+                <Icons.IndianRupee size={16} />
+                {customSplitEnabled ? 'Custom Split On' : 'Enable Custom Split'}
+              </button>
+            </div>
+            {customSplitEnabled && (
+              <div className="mt-4 rounded-2xl bg-money-50 dark:bg-money-700/10 border border-money-200 dark:border-money-700/30 p-4 animate-fade-slide-up">
+                <p className="text-sm text-money-700 dark:text-money-300">Enter the amount (in ₹) each person should pay.</p>
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <span className={`text-xs font-mono font-semibold px-2.5 py-1 rounded-lg ${customShareMatches ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>Shares: {formatINRPrecise(totalCustomShare)}</span>
+                  <span className="text-xs text-slate-400">/</span>
+                  <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Total: {formatINRPrecise(totalExpense)}</span>
+                  {customShareMatches && totalCustomShare > 0 && <Icons.CheckCircle size={16} className="text-emerald-500 animate-scale-in" />}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2"><Icons.Users size={16} className="text-tool-500" /><span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Participants</span></div>
+              <span className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{participants.length} added</span>
+            </div>
+            {participants.map((p, i) => (
+              <ParticipantRow key={p.id} participant={p} index={i} onChange={handleChange}
+                onRemove={() => removeParticipant(p.id)} canRemove={participants.length > 1} customSplitEnabled={customSplitEnabled} />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button onClick={addParticipant}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-tool-400 hover:text-tool-500 dark:hover:border-tool-500 dark:hover:text-tool-400 transition-all duration-200 font-semibold text-sm touch-target active:scale-[0.98] glass-panel">
+                <Icons.UserPlus size={18} /> Add Participant
+              </button>
+              <button onClick={onSave}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-tool-500 to-tool-600 hover:from-tool-600 hover:to-money-600 text-white font-semibold text-sm shadow-lg shadow-tool-500/20 transition-all duration-200 touch-target active:scale-[0.98]">
+                <Icons.Save size={18} /> Save Trip
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button onClick={onGoSplit}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-money-500 to-teal-500 hover:from-money-600 hover:to-teal-600 text-white font-semibold text-sm shadow-lg shadow-money-500/20 transition-all duration-200 touch-target active:scale-[0.98]">
+                <Icons.Calculator size={18} /> Split Calculator
+              </button>
+              <button onClick={resetAll}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-slate-500 dark:text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 border border-slate-200 dark:border-slate-700 transition-all duration-200 text-sm font-medium touch-target glass-panel">
+                <Icons.RefreshCw size={14} /> Reset All
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===== SPLIT TAB ===== */
+    function SplitTab({ participants, tripTitle, customSplitEnabled }) {
+      const { addToast } = useToast();
+      const validParticipants = participants.filter(p => p.name.trim());
+      const splitData = useMemo(() => minimizeDebts(validParticipants, customSplitEnabled), [validParticipants, customSplitEnabled]);
+
+      const copySummary = useCallback(() => {
+        if (splitData.settlements.length === 0) { addToast('No settlements to copy', 'info'); return; }
+        const header = tripTitle ? `${tripTitle} — Settlement Summary` : 'Settlement Summary';
+        const lines = [header, '═'.repeat(40), `Total Expense: ${formatINRPrecise(splitData.total)}`,
+          customSplitEnabled ? `Split Mode: Custom Split (₹)` : `Per Person: ${formatINRPrecise(splitData.avg)}`,
+          `Participants: ${validParticipants.length}`, '', 'Settlements:',
+          ...splitData.settlements.map((s, i) => `  ${i + 1}. ${s.from} → pays ${formatINRPrecise(s.amount)} → ${s.to}`),
+          '', '— Generated by BudgetBuddy Expense Split'];
+        navigator.clipboard.writeText(lines.join('\n'))
+          .then(() => addToast('Summary copied!', 'success'))
+          .catch(() => addToast('Failed to copy', 'error'));
+      }, [splitData, tripTitle, validParticipants, addToast, customSplitEnabled]);
+
+      if (validParticipants.length < 2) {
+        return (
+          <div className="animate-fade-slide-up text-center py-16">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4"><Icons.Users size={28} className="text-slate-400" /></div>
+            <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400 mb-2">Not Enough Data</h3>
+            <p className="text-sm text-slate-400 dark:text-slate-500 max-w-sm mx-auto">Add at least 2 named participants with expenses in the Tracker tab.</p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-4 animate-fade-slide-up" key="split">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="glass-panel rounded-3xl p-4 panel-raised animate-scale-in stagger-1">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Total</p>
+              <p className="text-lg sm:text-xl font-bold font-mono text-slate-900 dark:text-white">{formatINR(splitData.total)}</p>
+            </div>
+            <div className="glass-panel rounded-3xl p-4 panel-raised animate-scale-in stagger-2">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">{customSplitEnabled ? 'Split Mode' : 'Per Person'}</p>
+              <p className="text-lg sm:text-xl font-bold font-mono text-tool-600 dark:text-tool-400">{customSplitEnabled ? 'Custom ₹' : formatINR(splitData.avg)}</p>
+            </div>
+            <div className="col-span-2 sm:col-span-1 glass-panel rounded-3xl p-4 panel-raised animate-scale-in stagger-3">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Transfers</p>
+              <p className="text-lg sm:text-xl font-bold font-mono text-amber-600 dark:text-amber-400">{splitData.settlements.length}</p>
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-3xl p-4 sm:p-5 panel-raised">
+            <div className="flex items-center gap-2 mb-4"><Icons.Wallet size={16} className="text-tool-500" /><span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Individual Balances</span></div>
+            <div className="space-y-2">
+              {splitData.balances.map((b, i) => {
+                const pct = splitData.total > 0 ? (b.expense / splitData.total) * 100 : 0;
+                const isOver = b.balance > 0.01, isUnder = b.balance < -0.01;
+                return (
+                  <div key={i} className="animate-slide-right" style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isOver ? 'bg-emerald-500' : isUnder ? 'bg-rose-500' : 'bg-slate-300'}`} />
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{b.name}</span>
+                        <span className="text-xs font-mono text-slate-400">spent {formatINRPrecise(b.expense)}</span>
+                        <span className="text-xs font-mono text-money-600 dark:text-money-400">target {formatINRPrecise(b.owed || 0)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isOver && <Icons.TrendingUp size={14} className="text-emerald-500" />}
+                        {isUnder && <Icons.TrendingDown size={14} className="text-rose-500" />}
+                        <span className={`text-sm font-mono font-bold ${isOver ? 'text-emerald-600 dark:text-emerald-400' : isUnder ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+                          {b.balance > 0 ? '+' : ''}{formatINRPrecise(b.balance)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-100 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ease-out ${isOver ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : isUnder ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 'bg-slate-300'}`}
+                        style={{ width: `${Math.min(Math.max(pct, 3), 100)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-3xl p-4 sm:p-5 panel-raised">
+            <div className="flex items-center gap-2 mb-4">
+              <Icons.Sparkles size={16} className="text-amber-500" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Settlement Summary</span>
+              <span className="ml-auto text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{customSplitEnabled ? 'Custom Split' : 'Optimized'}</span>
+            </div>
+            {splitData.settlements.length === 0 ? (
+              <div className="text-center py-8"><Icons.CheckCircle size={32} className="text-emerald-500 mx-auto mb-2" /><p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">All settled! No transfers needed.</p></div>
+            ) : (
+              <div className="space-y-3">
+                {splitData.settlements.map((s, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/70 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-700/40 animate-slide-right" style={{ animationDelay: `${i * 0.08}s` }}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-900/30 dark:to-orange-900/20 flex items-center justify-center">
+                        <span className="text-xs font-bold font-mono text-rose-600 dark:text-rose-400">{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm sm:text-base text-slate-800 dark:text-slate-200 leading-relaxed">
+                          <span className="font-semibold">{s.from}</span>
+                          <span className="text-slate-500 dark:text-slate-400"> should pay </span>
+                          <span className="font-bold font-mono text-tool-600 dark:text-tool-400 px-2 py-0.5 rounded-lg bg-tool-50 dark:bg-tool-900/30 inline-block mx-1">{formatINRPrecise(s.amount)}</span>
+                          <span className="text-slate-500 dark:text-slate-400"> to </span>
+                          <span className="font-semibold">{s.to}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 no-print">
+            <button onClick={copySummary}
+              className="flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-2xl glass-panel border border-slate-200 dark:border-slate-700/60 hover:border-tool-300 dark:hover:border-tool-700 hover:bg-tool-50/70 dark:hover:bg-tool-900/20 transition-all duration-200 panel-raised touch-target active:scale-[0.97]">
+              <Icons.Copy size={20} className="text-tool-500" /><span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Copy</span>
+            </button>
+            <button onClick={() => window.print()}
+              className="flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-2xl glass-panel border border-slate-200 dark:border-slate-700/60 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/70 dark:hover:bg-amber-900/20 transition-all duration-200 panel-raised touch-target active:scale-[0.97]">
+              <Icons.Printer size={20} className="text-amber-500" /><span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Print</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===== HISTORY TAB ===== */
+    function HistoryTab({ trips, onLoad, onDelete }) {
+      if (trips.length === 0) {
+        return (
+          <div className="animate-fade-slide-up text-center py-16">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4"><Icons.FolderOpen size={28} className="text-slate-400" /></div>
+            <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400 mb-2">No Saved Trips</h3>
+            <p className="text-sm text-slate-400 dark:text-slate-500 max-w-sm mx-auto">Save a trip from the Tracker tab and it will appear here.</p>
+          </div>
+        );
+      }
+      return (
+        <div className="space-y-3 animate-fade-slide-up" key="history">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2"><Icons.History size={16} className="text-amber-500" /><span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 dark:text-slate-500">Saved Trips</span></div>
+            <span className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">{trips.length} trip{trips.length !== 1 ? 's' : ''}</span>
+          </div>
+          {trips.map((trip, i) => (
+            <div key={trip.id} className="glass-panel rounded-3xl p-4 sm:p-5 panel-raised animate-slide-right" style={{ animationDelay: `${i * 0.06}s` }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">{trip.title || 'Untitled Trip'}</h3>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <span className="flex items-center gap-1 text-xs text-slate-400"><Icons.Calendar size={12} />{new Date(trip.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span className="flex items-center gap-1 text-xs text-slate-400"><Icons.Users size={12} />{trip.participantCount} people</span>
+                    {trip.customSplitEnabled && <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-money-100 dark:bg-money-700/20 text-money-700 dark:text-money-400">Custom Split</span>}
+                  </div>
+                </div>
+                <div className="text-right ml-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Total</p>
+                  <p className="text-lg font-bold font-mono text-tool-600 dark:text-tool-400">{formatINR(trip.totalExpense)}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {trip.participantNames.slice(0, 5).map((name, j) => (
+                  <span key={j} className="px-2.5 py-0.5 text-[11px] font-medium bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 rounded-lg">{name}</span>
+                ))}
+                {trip.participantNames.length > 5 && <span className="px-2.5 py-0.5 text-[11px] font-medium bg-slate-100 dark:bg-slate-700/60 text-slate-400 rounded-lg">+{trip.participantNames.length - 5} more</span>}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => onLoad(trip)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-tool-50 dark:bg-tool-900/20 text-tool-600 dark:text-tool-400 hover:bg-tool-100 dark:hover:bg-tool-900/40 font-semibold text-sm transition-all duration-200 touch-target active:scale-[0.98]">
+                  <Icons.FolderOpen size={16} /> Load
+                </button>
+                <button onClick={() => onDelete(trip.id)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 font-semibold text-sm transition-all duration-200 touch-target active:scale-[0.98]">
+                  <Icons.Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    /* ===== APP ===== */
+    function App() {
+      const [dark, setDark] = useTheme();
+      const [activeTab, setActiveTab] = useState('tracker');
+      const [tripTitle, setTripTitle] = useState('');
+      const [participants, setParticipants] = useState([createParticipant(), createParticipant()]);
+      const [customSplitEnabled, setCustomSplitEnabled] = useState(false);
+      const [trips, setTrips] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(TRIPS_KEY) || '[]'); } catch { return []; }
+      });
+      const [tabKey, setTabKey] = useState(0);
+
+      useEffect(() => { localStorage.setItem(TRIPS_KEY, JSON.stringify(trips)); }, [trips]);
+
+      const totalExpense = useMemo(() =>
+        participants.reduce((sum, p) => sum + ((parseFloat(p.carried) || 0) - (parseFloat(p.remaining) || 0)), 0),
+        [participants]
+      );
+
+      const handleTabChange = useCallback((tab) => { setActiveTab(tab); setTabKey(k => k + 1); }, []);
+      const { addToast } = useToast();
+
+      const saveTrip = useCallback(() => {
+        const named = participants.filter(p => p.name.trim());
+        if (!tripTitle.trim()) { addToast('Please enter a trip title', 'error'); return; }
+        if (named.length < 1) { addToast('Add at least one named participant', 'error'); return; }
+        if (customSplitEnabled) {
+          const totalCustom = participants.reduce((s, p) => s + (parseFloat(p.customShare) || 0), 0);
+          if (totalCustom <= 0) { addToast('Please enter custom share amounts', 'error'); return; }
+        }
+        const trip = {
+          id: genId(), title: tripTitle.trim(), date: new Date().toISOString(),
+          totalExpense, customSplitEnabled, participantCount: named.length,
+          participantNames: named.map(p => p.name),
+          participants: named.map(p => ({ id: p.id, name: p.name, carried: p.carried, remaining: p.remaining, customShare: p.customShare || '' })),
+        };
+        setTrips(prev => [trip, ...prev]);
+        addToast('Trip saved successfully!', 'success');
+      }, [tripTitle, participants, totalExpense, addToast, customSplitEnabled]);
+
+      const loadTrip = useCallback((trip) => {
+        setTripTitle(trip.title);
+        setCustomSplitEnabled(!!trip.customSplitEnabled);
+        setParticipants(trip.participants.map(p => ({ ...createParticipant(p.name), id: p.id || genId(), name: p.name, carried: p.carried, remaining: p.remaining, customShare: p.customShare || '' })));
+        setActiveTab('tracker'); setTabKey(k => k + 1);
+        addToast(`Loaded: ${trip.title}`, 'success');
+      }, [addToast]);
+
+      const deleteTrip = useCallback((id) => { setTrips(prev => prev.filter(t => t.id !== id)); addToast('Trip deleted', 'info'); }, [addToast]);
+
+      return (
+        <div className="min-h-screen tool-bg pb-8">
+          <Header dark={dark} setDark={setDark} />
+          <TabNav active={activeTab} onChange={handleTabChange} />
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
+            <div key={`${activeTab}-${tabKey}`}>
+              {activeTab === 'tracker' && (
+                <TrackerTab tripTitle={tripTitle} setTripTitle={setTripTitle}
+                  participants={participants} setParticipants={setParticipants}
+                  onSave={saveTrip} totalExpense={totalExpense}
+                  onGoSplit={() => setActiveTab('split')}
+                  customSplitEnabled={customSplitEnabled} setCustomSplitEnabled={setCustomSplitEnabled} />
+              )}
+              {activeTab === 'split' && (
+                <SplitTab participants={participants} tripTitle={tripTitle} customSplitEnabled={customSplitEnabled} />
+              )}
+              {activeTab === 'history' && (
+                <HistoryTab trips={trips} onLoad={loadTrip} onDelete={deleteTrip} />
+              )}
+            </div>
+          </main>
+
+          <footer className="no-print max-w-5xl mx-auto px-4 sm:px-6 mt-8 mb-4">
+            <div className="border-t border-slate-200/80 dark:border-slate-800 pt-4 text-center">
+              <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-slate-400 dark:text-slate-600">
+                BudgetBuddy © 2025 • Expense Split Tool • Crafted with ❤️ for India 🇮🇳
+              </p>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+  </script>
+</body>
+</html>
